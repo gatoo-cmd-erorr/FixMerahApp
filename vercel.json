@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "npm install",
+  "outputDirectory": null,
   "routes": [
     { "src": "/api/(.*)", "dest": "/api/$1" }
   ],
