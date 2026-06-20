@@ -17,22 +17,38 @@ const {
 
 // ─── Kirim via SMTP ────────────────────────────────────────────────────────────
 async function sendViaSMTP({ senderUser, senderPass, toEmail, subject, body }) {
+  // Transport SMTP STARTTLS port 587 (sama seperti Python: ehlo->starttls->ehlo->login)
   const transporter = nodemailer.createTransport({
     host: "smtp.gmail.com",
     port: 587,
     secure: false,
+    requireTLS: true,
     auth: { user: senderUser, pass: senderPass },
     tls: { rejectUnauthorized: false },
   });
 
+  // Deteksi html vs plain SAMA seperti Python (html bila body mengandung < DAN >)
+  const isHtml = body.includes("<") && body.includes(">");
+
+  // Domain Message-ID = domain milik sender (Python make_msgid(domain=...))
+  const senderDomain = senderUser.includes("@") ? senderUser.split("@")[1] : "localhost";
+
   const info = await transporter.sendMail({
-    from: `"FixMerah Bot" <${senderUser}>`,
+    // From dengan display name "Appeal Bot" — SAMA seperti Python formataddr(("Appeal Bot", ...))
+    from: { name: "Appeal Bot", address: senderUser },
     to: toEmail,
     subject,
-    [body.includes("<") && body.includes(">") ? "html" : "text"]: body,
+    // Single-part text ATAU html (Python kirim single-part, bukan multipart)
+    [isHtml ? "html" : "text"]: body,
+    // Content-Transfer-Encoding base64 (Python MIMEText utf-8 default = base64)
+    encoding: "base64",
+    // Message-ID domain = domain sender
+    messageId: `<${Date.now()}.${Math.random().toString(36).slice(2)}@${senderDomain}>`,
+    // Matikan header X-Mailer default nodemailer (Python TIDAK punya X-Mailer → hindari sinyal bot)
+    xMailer: false,
   });
 
-  return info.messageId; // format: <xxx@gmail.com>
+  return info.messageId; // format: <xxx@domain-sender>
 }
 
 // ─── Retry 2x ─────────────────────────────────────────────────────────────────
