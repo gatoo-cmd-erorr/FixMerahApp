@@ -5,6 +5,7 @@
 
 const nodemailer = require("nodemailer");
 const { checkApiKey } = require("../lib/auth");
+const { classifySmtpError, SAFE_MESSAGES } = require("../lib/smtp-error");
 const {
   getActiveGmailAccounts,
   insertTracking,
@@ -98,7 +99,27 @@ module.exports = async function handler(req, res) {
   try {
     messageId = await sendWithRetry({ senderUser, senderPass, toEmail: to_email, subject, body });
   } catch (e) {
-    return jsonErr(res, 502, `SMTP gagal: ${e.message}`);
+    // Klasifikasi terstruktur (lib/smtp-error.js) — bukan jsonErr generik,
+    // karena caller (fix.js/sender-privat.js) butuh field `code`/`retryable`
+    // untuk membedakan auth-permanent vs transient. jsonErr() TIDAK diubah
+    // (dipakai 15+ tempat lain dengan kontrak {ok,error} yang sudah stabil).
+    const cls = classifySmtpError(e);
+    // Structured safe log — TIDAK PERNAH e.response/e.message mentah (bisa
+    // memuat detail SMTP internal), TIDAK PERNAH alamat Gmail lengkap,
+    // credential, atau stack trace. Hanya field non-sensitif untuk diagnosis.
+    console.error(JSON.stringify({
+      operation: "send_email",
+      code: cls.code,
+      nodemailer_code: (e && e.code) || null,
+      response_code: (e && e.responseCode) || null,
+      retryable: cls.retryable,
+    }));
+    return res.status(502).json({
+      ok: false,
+      code: cls.code,
+      message: SAFE_MESSAGES[cls.code],
+      retryable: cls.retryable,
+    });
   }
 
   // Simpan ke tracking DB
