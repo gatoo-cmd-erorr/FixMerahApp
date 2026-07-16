@@ -40,7 +40,7 @@ vercel --prod
 
 | Variable       | Contoh                                              |
 |----------------|-----------------------------------------------------|
-| `API_KEY`      | `fixmerah-secret-key-2024`                          |
+| `API_KEY`      | `<generate-a-unique-random-api-key>`                 |
 | `MONGODB_URI`  | `mongodb+srv://user:pass@cluster.mongodb.net/`      |
 | `MONGODB_DB`   | `fixmerah` *(opsional, default: fixmerah)*          |
 
@@ -70,11 +70,21 @@ Buat collection `gmail_accounts` dan isi dengan akun Gmail kamu:
 ## 📡 Endpoint API
 
 ### Auth
-Semua endpoint butuh header:
+
+Semua endpoint membutuhkan API key. Metode utama:
+
+```http
+X-API-Key: <api-key>
 ```
-X-API-Key: your-api-key
+
+Bearer juga didukung:
+
+```http
+Authorization: Bearer <api-key>
 ```
-atau query: `?api_key=your-api-key`
+
+> **Deprecated:** Query-string authentication dipertahankan sementara untuk backward compatibility.
+> Jangan gunakan metode ini untuk caller baru: `?api_key=<api-key>`
 
 ---
 
